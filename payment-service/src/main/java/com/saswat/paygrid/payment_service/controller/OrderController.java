@@ -50,9 +50,4 @@ public class OrderController {
         return ResponseEntity.ok(orderService.listPayments(merchantContext.getMerchantId(), orderId));
     }
 
-    @GetMapping
-    public ResponseEntity<List<OrderResponse>> listByMerchant() {
-        return ResponseEntity.ok(orderService.listByMerchant(merchantContext.getMerchantId()));
-    }
-
 }

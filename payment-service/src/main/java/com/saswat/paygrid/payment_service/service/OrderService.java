@@ -17,7 +17,5 @@ public interface OrderService {
 
     List<PaymentResponse> listPayments(UUID merchantId, UUID orderId);
 
-    List<OrderResponse> listByMerchant(UUID merchantId);
-
 
 }

@@ -6,7 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -16,8 +15,6 @@ public interface OrderRepository extends JpaRepository<OrderRecord, UUID> {
     boolean existsByIdAndMerchantId(final UUID orderId, final UUID merchantId);
 
     Optional<OrderRecord> findByIdAndMerchantId(UUID orderId, UUID merchantId);
-
-    List<OrderRecord> findByMerchantIdOrderByCreatedAtDesc(UUID merchantId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select o from OrderRecord o where o.id = :uuid and o.merchantId = :merchantId")

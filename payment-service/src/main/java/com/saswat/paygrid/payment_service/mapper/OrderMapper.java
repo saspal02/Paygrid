@@ -5,12 +5,8 @@ import com.saswat.paygrid.payment_service.entity.OrderRecord;
 import org.mapstruct.Mapper;
 import org.mapstruct.MappingConstants;
 
-import java.util.List;
-
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 public interface OrderMapper {
 
     OrderResponse toResponse(OrderRecord orderRecord);
-
-    List<OrderResponse> toResponseList(List<OrderRecord> orderRecords);
 }

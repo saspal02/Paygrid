@@ -18,10 +18,10 @@ public class GatewayDocsRoutesConfig {
 
     @Bean
     public RouterFunction<ServerResponse> docsRoutes(
-            @Value("${MERCHANT_SERVICE_URI:http://merchant-service}") final String merchantUri,
-            @Value("${PAYMENT_SERVICE_URI:http://payment-service}") final String paymentUri,
-            @Value("${VAULT_SERVICE_URI:http://vault-service}") final String vaultUri,
-            @Value("${OPERATIONS_SERVICE_URI:http://operations-service}") final String operationsUri) {
+            @Value("${MERCHANT_SERVICE_URI:http://merchant-service}") String merchantUri,
+            @Value("${PAYMENT_SERVICE_URI:http://payment-service}") String paymentUri,
+            @Value("${VAULT_SERVICE_URI:http://vault-service}") String vaultUri,
+            @Value("${OPERATIONS_SERVICE_URI:http://operations-service}") String operationsUri) {
 
         return route("merchant-service-docs")
                 .GET("/merchant-service/v3/api-docs", http())
