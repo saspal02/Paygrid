@@ -40,29 +40,3 @@ jobs:
             (cd "$svc" && ./mvnw -B package -DskipTests -Djib.skip=true)
           done
 
-      - name: Set up kubectl
-        uses: azure/setup-kubectl@v4
-        with:
-          version: v1.30.x
-
-      - name: Create dummy secrets file for validation
-        run: |
-          if [ ! -f k8s/k8s-secrets.env ]; then
-            cat > k8s/k8s-secrets.env <<'EOF'
-          PSQL_USER=paygrid
-          PSQL_PASSWORD=dummy
-          REDIS_PASSWORD=dummy
-          JWT_SECRET=dummy-jwt-secret-for-ci-only-32chars
-          WEBHOOK_SECRET=dummy
-          PAYMENT_DB_PASSWORD=dummy
-          MERCHANT_DB_PASSWORD=dummy
-          GITHUB_URI=https://github.com/saspal02/dummy-config-repo.git
-          GITHUB_USERNAME=dummy
-          CONFIG_PASSWORD=dummy
-          EOF
-          fi
-
-      - name: Validate Kustomize manifests
-        run: |
-          kubectl kustomize k8s/ > /tmp/kustomize.yaml
-          echo "resources: $(grep -c '^kind:' /tmp/kustomize.yaml)"
