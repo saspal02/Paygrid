@@ -1,8 +1,8 @@
 package com.saswat.paygrid.payment_service.processor;
 
-import com.saswat.paygrid.common_lib.enums.PaymentMethod;
 import com.saswat.paygrid.common_lib.dto.PaymentProcessorRequest;
 import com.saswat.paygrid.common_lib.dto.PaymentProcessorResponse;
+import com.saswat.paygrid.common_lib.enums.PaymentMethod;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 

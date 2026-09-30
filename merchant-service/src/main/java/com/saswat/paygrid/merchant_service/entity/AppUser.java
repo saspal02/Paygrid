@@ -4,6 +4,7 @@ import com.saswat.paygrid.common_lib.entity.BaseEntity;
 import com.saswat.paygrid.common_lib.enums.UserRole;
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.util.UUID;
 
 @Entity

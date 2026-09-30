@@ -4,7 +4,6 @@ import com.saswat.paygrid.common_lib.enums.EventAggregateType;
 import com.saswat.paygrid.common_lib.enums.OrderStatus;
 import com.saswat.paygrid.common_lib.enums.PaymentEvent;
 import com.saswat.paygrid.common_lib.enums.PaymentStatus;
-import com.saswat.paygrid.common_lib.exception.BusinessRuleViolationException;
 import com.saswat.paygrid.common_lib.exception.ResourceNotFoundException;
 import com.saswat.paygrid.payment_service.dto.request.PaymentInitRequest;
 import com.saswat.paygrid.payment_service.dto.response.PaymentResponse;

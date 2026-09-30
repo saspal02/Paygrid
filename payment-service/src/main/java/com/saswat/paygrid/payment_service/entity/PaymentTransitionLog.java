@@ -5,7 +5,6 @@ import com.saswat.paygrid.common_lib.enums.PaymentActor;
 import com.saswat.paygrid.common_lib.enums.PaymentEvent;
 import com.saswat.paygrid.common_lib.enums.PaymentStatus;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 import java.time.LocalDateTime;

@@ -4,7 +4,6 @@ import com.saswat.paygrid.merchant_service.dto.request.LoginRequest;
 import com.saswat.paygrid.merchant_service.dto.request.MerchantSignupRequest;
 import com.saswat.paygrid.merchant_service.dto.response.LoginResponse;
 import com.saswat.paygrid.merchant_service.dto.response.MerchantResponse;
-import jakarta.validation.Valid;
 
 public interface AuthService {
     MerchantResponse signUp(MerchantSignupRequest request);

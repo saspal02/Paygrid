@@ -1,7 +1,6 @@
 package com.saswat.paygrid.payment_service.simulator;
 
 import com.saswat.paygrid.common_lib.enums.ChaosMode;
-import com.saswat.paygrid.common_lib.enums.PaymentMethod;
 import com.saswat.paygrid.common_lib.enums.PaymentStatus;
 import com.saswat.paygrid.common_lib.util.RandomizerUtil;
 import com.saswat.paygrid.payment_service.entity.Payment;

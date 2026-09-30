@@ -1,6 +1,5 @@
 package com.saswat.paygrid.operations_service.entity;
 
-import com.saswat.paygrid.common_lib.entity.BaseEntity;
 import jakarta.persistence.Embeddable;
 import lombok.*;
 

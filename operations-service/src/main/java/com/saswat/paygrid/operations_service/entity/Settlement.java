@@ -1,8 +1,8 @@
 package com.saswat.paygrid.operations_service.entity;
 
 import com.saswat.paygrid.common_lib.entity.BaseEntity;
-import com.saswat.paygrid.common_lib.enums.SettlementStatus;
 import com.saswat.paygrid.common_lib.entity.Money;
+import com.saswat.paygrid.common_lib.enums.SettlementStatus;
 import jakarta.persistence.*;
 import lombok.*;
 

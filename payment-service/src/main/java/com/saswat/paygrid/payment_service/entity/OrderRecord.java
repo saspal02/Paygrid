@@ -1,8 +1,8 @@
 package com.saswat.paygrid.payment_service.entity;
 
 import com.saswat.paygrid.common_lib.entity.BaseEntity;
-import com.saswat.paygrid.common_lib.enums.OrderStatus;
 import com.saswat.paygrid.common_lib.entity.Money;
+import com.saswat.paygrid.common_lib.enums.OrderStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
