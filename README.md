@@ -160,6 +160,8 @@ This avoids a distributed transaction between PostgreSQL and Kafka while guarant
 
 ### Saga pattern
 
+![Saga pattern](diagrams/Saga.png)
+
 The end-to-end payment flow is a Saga: one distributed transaction broken into local transactions with compensating actions instead of two-phase commit or distributed rollback.
 
 Each step owns a different database (the payment-service and operations-service PostgreSQL instances) plus external systems (the bank or gateway, the merchant webhook endpoint), with Kafka in between. No single ACID transaction can span them. If the gateway declines after the order was marked `ATTEMPTED`, or the bank transfer fails after the settlement row was created, the Saga compensates rather than rolling back.
