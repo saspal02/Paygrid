@@ -162,20 +162,23 @@ This avoids a distributed transaction between PostgreSQL and Kafka while guarant
 
 ![Saga pattern](diagrams/Saga.png)
 
+The simplified flow, showing which steps are event-driven and which are scheduled:
+
 The end-to-end payment flow is a Saga: one distributed transaction broken into local transactions with compensating actions instead of two-phase commit or distributed rollback.
 
 Each step owns a different database (the payment-service and operations-service PostgreSQL instances) plus external systems (the bank or gateway, the merchant webhook endpoint), with Kafka in between. No single ACID transaction can span them. If the gateway declines after the order was marked `ATTEMPTED`, or the bank transfer fails after the settlement row was created, the Saga compensates rather than rolling back.
 
-PayGrid combines both flavors — orchestration inside a service, choreography across services:
+PayGrid uses both flavors, and the distinction matters:
 
 1. **Orchestrated authorization saga in `payment-service`** — forward steps record the payment and call the gateway; a failure runs the compensating step that moves the payment to `FAILED` and emits `PAYMENT_AUTHORIZATION_COMPENSATED`.
-2. **Choreographed settlement and webhook saga via the outbox and Kafka** — each service reacts to published events, and failures land in an explicit `FAILED` state instead of a partially applied change.
+2. **Orchestrated settlement saga in `operations-service`** — `SettlementEngine` runs on a nightly schedule and pulls unsettled captured payments over an internal API, then transfers funds. A failed transfer marks the settlement `FAILED`, and the payments stay `CAPTURED` so the next run picks them up in a fresh settlement.
+3. **Choreographed webhook saga via the outbox and Kafka** — status changes are published through the transactional outbox, and `WebhookKafkaConsumer` reacts to payment, order, refund, and settlement events, delivering signed notifications with retry and a dead-letter queue.
 
 The rule of thumb is:
 
 > One business transaction spanning multiple services and databases, with no 2PC available, means a Saga of local transactions and compensating states.
 
-There is no distributed rollback in PayGrid: every forward step has a defined compensation (`AUTHORIZE_FAIL`, settlement `FAILED`, webhook retry and dead-letter queue), and the outbox guarantees that every Saga event eventually reaches the next participant.
+There is no distributed rollback in PayGrid: every forward step has a defined compensation (`AUTHORIZE_FAIL`, settlement `FAILED`, webhook retry and dead-letter queue). Kafka carries notifications, not commands — money movement is driven by local transactions and a scheduled batch, not by events.
 
 ### Strategy design pattern
 
