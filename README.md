@@ -1,104 +1,145 @@
-# PayGrid
+# PayGrid — Distributed Payment Gateway (like Razorpay)
 
-Distributed payment gateway. Merchants onboard, take payments, vault cards, and get settled — all through one gateway API.
+PayGrid is a Razorpay-style payment gateway built as Spring Cloud microservices. Merchants sign up, get a JWT, create scoped API keys, and accept payments through one gateway API with idempotency, rate-limiting, and PCI-safe card tokenization built in. It follows PCI-DSS compliance.
 
-`com.saswat.paygrid` · Java 25 · Spring Boot 4.1 · Kubernetes namespace `paygrid-core`
 
-## How a payment flows
+## Architecture
 
-1. Merchant signs up and logs in → gets a JWT.
-2. Merchant creates an API key (`keyId` + secret).
-3. Merchant calls the payments API with `Basic base64(keyId:secret)` and an idempotency key.
-4. Gateway verifies the key, rate-limits, and forwards trusted identity headers downstream.
-5. Payment service runs init → capture via state machine + saga/outbox over Kafka.
-6. Operations settles and delivers webhooks signed with `X-PayGrid-Signature`.
+A distributed, Kubernetes-native payment platform — order creation, payment authorization,
+bank callback simulation, settlement, webhooks — built across 7 microservices with the same
+architectural patterns real payment companies (Stripe, Razorpay, Adyen) use in production.
+
+| Service | Responsibility |
+| ----- | ----- |
+| `api-gateway`  | Auth (API key + BCrypt), rate limiting, routing |
+| `payment-service`  | Orders, payments, state machine, bank callback simulation |
+| `merchant-service`  | Merchant accounts, API keys, customers, webhooks |
+| `operations-service`  | Settlements, webhook delivery, outbox relay |
+| `vault-service`  | Card tokenization, encryption |
+| `config-service`  | Centralized config (Spring Cloud Config, git-backed) |
+| `discovery-service`  | Service registry |
+
+Backed by Postgres (per-service databases), Redis (rate limiting, idempotency, caching, distributed locks), Kafka (event bus), and a full observability stack (Prometheus, Grafana, Zipkin), all running as a real Kubernetes deployment (Deployments, StatefulSets, Services, ConfigMaps, Secrets).
+
+## Tech-Stack
+
+- **Java 25**
+- **Spring Boot 4.1**
+- **Spring Cloud:** Gateway, Config Server, Eureka
+- **Database:** PostgreSQL + Hibernate (`ddl-auto`)
+- **Caching:** Redis
+- **Messaging:** Apache Kafka (KRaft)
+- **Security:** JJWT + BCrypt
+- **Mapping:** MapStruct
+- **Distributed Scheduling:** ShedLock
+- **Resilience:** Resilience4j
+- **Observability:** Prometheus + Grafana + Zipkin
+- **Local Development:** Kind + Spring Cloud Config Server
+- **Kubernetes:** Kind + Kustomize
+- **Containerization:** Jib
+
+
+## Run Locally
+
+The whole platform runs in a single local Kubernetes cluster (Kind): all 5 application
+services plus Postgres, Redis, Kafka, Zipkin, Prometheus, Grafana and Kafka UI.
+
+**Prerequisites:** Docker, [kind](https://kind.sigs.k8s.io/), `kubectl`, and `openssl`.
+Give Docker at least 10 GB of memory and make sure host port `8080` is free. Java 25 and
+Maven are only needed if you build the images yourself (`--build`).
+
+### 1. Clone the project
 
 ```bash
-# 1. Login (public route, no auth needed)
-curl -X POST http://localhost:8080/v1/auth/login \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"shop@example.com","password":"secret"}'
-
-# 2. Initiate a payment (API-key auth + idempotency)
-curl -X POST http://localhost:8080/v1/payments \
-  -u '<keyId>:<secret>' \
-  -H 'Content-Type: application/json' \
-  -H 'X-Idempotency-Key: order-1001' \
-  -d '{"amount":1999,"currency":"INR","customerId":"<uuid>"}'
+git clone https://github.com/saspal02/distributed-payment-gateway.git
 ```
 
-## Services
-
-| Service | Port | Responsibility |
-|---|---|---|
-| `api-gateway-service` | 8080 | Entry point. JWT + API-key auth, rate limiting, identity propagation, docs proxy |
-| `merchant-service` | 9010 | Signup/login, API keys, customers, webhook config |
-| `payment-service` | 9020 | Payments, state machine, saga, outbox, idempotency |
-| `operations-service` | 9030 | Settlements, webhook delivery |
-| `vault-service` | 9040 | AES card tokenization |
-| `config-service` | 8888 | Central config from git |
-| `discovery-service` | 8761 | Eureka discovery |
-| `common-lib` | — | Shared auth, cache, rate limit, OpenAPI setup |
-
-Backing infra: Postgres, Redis, Kafka, Zipkin, Prometheus/Grafana.
-
-## Quick start
+### 2. Go to the project directory
 
 ```bash
-docker compose up -d   # postgres, redis, kafka
-
-export PSQL_USER=paygrid PSQL_PASSWORD=secret \
-  REDIS_PASSWORD=secret JWT_SECRET=secret
-
-./common-lib/mvnw -q install -o
-./config-service/mvnw spring-boot:run &
-./discovery-service/mvnw spring-boot:run &
-./merchant-service/mvnw spring-boot:run &
-./payment-service/mvnw spring-boot:run &
-./vault-service/mvnw spring-boot:run &
-./operations-service/mvnw spring-boot:run &
-./api-gateway-service/mvnw spring-boot:run &  # http://localhost:8080
+cd distributed-payment-gateway
 ```
 
-Service config comes from the Config Server git repo (`GITHUB_URI`); local `application.yaml` files only point at the config server. Full secret list lives in `k8s/k8s-secrets.env`.
-
-## Auth reference
-
-| Credential | Header | Verified by | Downstream headers |
-|---|---|---|---|
-| API key | `Basic base64(keyId:secret)` | `ApiKeyAuthHandler` (cache → lookup, BCrypt, 60/min Redis limit) | `X-Merchant-Id`, `X-Environment`, `X-Key-Id` |
-| JWT | `Bearer <token>` | `JwtAuthHandler` / `JwtVerifier` | `X-Merchant-Id`, `X-User-Role` |
-
-Failures return `401` (`429` + `Retry-After` when rate-limited) as `{"errorCode","errorDescription"}`. Swagger and `/v3/api-docs` bypass auth.
-
-## API docs
-
-* Per service: `http://localhost:<port>/swagger-ui/index.html`
-* Aggregated through the gateway: `http://localhost:8080/<service>/v3/api-docs`
-
-## Deploy to Kubernetes
+### 3. Run the project
 
 ```bash
+./scripts/run-local.sh
+```
+
+The script creates your secrets file if missing, creates the Kind cluster, deploys
+everything and waits until all pods are ready. First start takes 5–10 minutes, most of it
+pulling images and waiting for the services to settle — see
+[Troubleshooting](#troubleshooting) if pods appear to be restarting.
+
+### 4. Open the API
+
+```
+http://localhost:8080/swagger-ui.html
+```
+
+### 5. Stop the project
+
+```bash
+./scripts/run-local.sh down
+```
+
+### Script commands
+
+| Command | Description |
+| ----- | ----- |
+| `./scripts/run-local.sh` | Create the cluster and deploy (same as `up`) |
+| `./scripts/run-local.sh up` | Create the cluster and deploy |
+| `./scripts/run-local.sh down` | Delete the cluster |
+| `./scripts/run-local.sh fresh` | Delete the cluster and redeploy from scratch |
+| `./scripts/run-local.sh status` | Show all pods and services |
+| `./scripts/run-local.sh logs [pod]` | Follow the logs of a pod (all pods if omitted) |
+| `./scripts/run-local.sh pf` | Port-forward Grafana, Prometheus, Zipkin and Kafka UI |
+| `./scripts/run-local.sh secrets` | Regenerate `k8s/k8s-secrets.env` |
+| `./scripts/run-local.sh up --build` | Build the images from source and deploy your code |
+| `./scripts/run-local.sh up --timeout N` | Wait up to N seconds for the pods (default 600) |
+
+To build your own code instead of pulling the published images:
+
+```bash
+./scripts/run-local.sh up --build
+```
+
+This compiles every service and loads the images into the cluster, so expect 10+ minutes
+on the first run. See [Your own images](#your-own-images).
+
+<details>
+<summary>What the script does</summary>
+
+```bash
+cp k8s/k8s-secrets.env.example k8s/k8s-secrets.env
 kind create cluster --config k8s/kind-config.yaml
-kubectl -k k8s/
-
-# Release one service (images: docker.io/saspal02/paygrid-<service>:latest)
-./payment-service/mvnw package jib:build
-kubectl -n paygrid-core rollout restart deploy/payment-service
-kubectl -n paygrid-core rollout status deploy/payment-service
+kubectl apply -k k8s/
+kubectl -n paygrid-core wait --for=condition=Ready pod --all --timeout=600s
 ```
 
-Health: `/actuator/health` (also the K8s readiness probe). Gateway is reachable at `http://localhost:8080` via NodePort 30080.
+To stop:
 
-## Layout
-
-```
-api-gateway-service/  merchant-service/  payment-service/
-vault-service/  operations-service/  config-service/
-discovery-service/  common-lib/
-k8s/              # kind config, kustomization, infra/, services/, stateful/
-docker-compose.yml  diagrams/  observability/
-AGENTS.md         # code style and testing rules — read before contributing
+```bash
+kind delete cluster
 ```
 
-No CI yet; deploys are manual per the steps above.
+</details>
+
+### Accessing the other services
+
+Only the API gateway is exposed to the host. Everything else is reachable through
+port-forwarding:
+
+```bash
+kubectl -n paygrid-core port-forward svc/grafana        3000:3000   # Grafana (admin / the GRAFANA_ADMIN_PASSWORD you set)
+kubectl -n paygrid-core port-forward svc/prometheus     9090:9090   # Prometheus
+kubectl -n paygrid-core port-forward svc/zipkin         9411:9411   # Zipkin
+kubectl -n paygrid-core port-forward svc/kafka-ui       8090:8090   # Kafka UI
+kubectl -n paygrid-core port-forward svc/postgres       5432:5432   # Postgres
+kubectl -n paygrid-core port-forward svc/redis          6379:6379   # Redis
+kubectl -n paygrid-core port-forward svc/kafka          9092:9092   # Kafka
+kubectl -n paygrid-core port-forward svc/config-service 8888:8888   # Config server
+```
+
+Or run all four observability UIs at once with `./scripts/run-local.sh pf`.
+

@@ -18,6 +18,22 @@ resources:
   - services/operations-service.yaml
   - services/vault-service.yaml
 
+namespace: paygrid-core
+
+images:
+  - name: docker.io/saspal02/paygrid-config-service
+    newTag: latest
+  - name: docker.io/saspal02/paygrid-api-gateway-service
+    newTag: latest
+  - name: docker.io/saspal02/paygrid-merchant-service
+    newTag: latest
+  - name: docker.io/saspal02/paygrid-payment-service
+    newTag: latest
+  - name: docker.io/saspal02/paygrid-operations-service
+    newTag: latest
+  - name: docker.io/saspal02/paygrid-vault-service
+    newTag: latest
+
 secretGenerator:
   - name: app-secrets
     namespace: paygrid-core
