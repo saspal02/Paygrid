@@ -44,7 +44,6 @@ A distributed, Kubernetes-native payment platform — order creation, payment au
 | `config-service` | Centralized config (Spring Cloud Config, git-backed) |
 | `discovery-service` | Service registry (built, not deployed in the local Kind cluster) |
 
-
 State lives in per-service PostgreSQL databases, Redis (rate limiting, idempotency, caching, distributed locks), and Kafka (event bus), all running as a real Kubernetes deployment of Deployments, StatefulSets, Services, ConfigMaps, and Secrets.
 
 ### Schema
@@ -67,13 +66,13 @@ The UPI payment flow begins when the customer clicks "Pay Now" on the merchant's
 
 ### Card Payment
 
-![Card payment flow](diagrams/Card payment.png)
+![Card payment flow](diagrams/Card-payment.png)
 
 The card payment flow begins when the customer provides their card information. The payment gateway sends this to the vault service, which encrypts the primary account number (PAN), creates a random token, and stores the mapping. Once the token is returned and tokenization is initiated with the payment processor, an authorization request containing the PAN is sent to the acquirer bank and routed through the card network to the issuer. The issuer holds the funds and responds with an approval or a decline, which travels back through the network and processor. The payment gateway then receives the approval webhook, informs the merchant, and a scheduler settles the funds, minus applicable fees, into the merchant's account. To keep this compliant, every step that processes, stores, or transmits cardholder data runs inside the tokenized vault boundary, so no PAN is persisted outside it and the platform stays within PCI-DSS scope.
 
 ### Payment object lifecycle
 
-![Payment object lifecycle](diagrams/Payment object lifecycle.png)
+![Payment object lifecycle](diagrams/Payment-object-lifecycle.png)
 
 Transitions are enforced by the payment state machine, so an invalid jump throws instead of silently corrupting state.
 
