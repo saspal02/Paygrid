@@ -2,6 +2,15 @@
 
 PayGrid is a Razorpay-style payment gateway built as Spring Cloud microservices. Merchants sign up, get a JWT, create scoped API keys, and accept payments through one gateway API with idempotency, rate-limiting, and PCI-safe card tokenization built in. It follows PCI-DSS compliance.
 
+ A **correct, idempotent, distributed payment flow** — order → payment → async bank resolution → settlement → webhook delivery — with the exact consistency patterns (outbox, distributed locking, idempotency) that production fintech systems depend on.
+
+ A **real Kubernetes deployment**: 6 services, 3 stateful data stores, all as actual
+`Deployment`/`StatefulSet`/`Service`/`ConfigMap`/`Secret` manifests, applied, restarted, scaled, and debugged against a live cluster — the same `kubectl` workflow used against any cloud cluster (EKS/GKE/AKS). Moving this to a hosted cloud changes _which node the API server runs on_ and _which managed services back the stateful pieces_ — not whether this is “deployed.”
+
+ A **fully wired observability stack** — Prometheus scraping every service, a custom Grafana
+ dashboard built from scratch, Zipkin distributed tracing — wired in and ready to use for
+ spotting bottlenecks live, not just installed and left unused.
+
 
 ## Architecture
 
@@ -23,6 +32,8 @@ Backed by Postgres (per-service databases), Redis (rate limiting, idempotency, c
 
 ## Tech-Stack
 
+You don't need any of this installed to test — prebuilt images are pulled automatically; stack listed for reference.
+
 - **Java 25**
 - **Spring Boot 4.1**
 - **Spring Cloud:** Gateway, Config Server, Eureka
@@ -36,17 +47,16 @@ Backed by Postgres (per-service databases), Redis (rate limiting, idempotency, c
 - **Observability:** Prometheus + Grafana + Zipkin
 - **Local Development:** Kind + Spring Cloud Config Server
 - **Kubernetes:** Kind + Kustomize
-- **Containerization:** Jib
-
+- **Containerization:** Docker + Jib
 
 ## Run Locally
 
-The whole platform runs in a single local Kubernetes cluster (Kind): all 5 application
+The whole platform runs in a single local Kubernetes cluster (Kind): all 6 application
 services plus Postgres, Redis, Kafka, Zipkin, Prometheus, Grafana and Kafka UI.
 
-**Prerequisites:** Docker, [kind](https://kind.sigs.k8s.io/), `kubectl`, and `openssl`.
-Give Docker at least 10 GB of memory and make sure host port `8080` is free. Java 25 and
-Maven are only needed if you build the images yourself (`--build`).
+
+**Prerequisites:** Docker, kind, `kubectl`, and `openssl`.
+Give Docker at least 10 GB of memory and make sure host port `8080` is free.
 
 ### 1. Clone the project
 
@@ -68,8 +78,7 @@ cd distributed-payment-gateway
 
 The script creates your secrets file if missing, creates the Kind cluster, deploys
 everything and waits until all pods are ready. First start takes 5–10 minutes, most of it
-pulling images and waiting for the services to settle — see
-[Troubleshooting](#troubleshooting) if pods appear to be restarting.
+pulling images and waiting for the services to settle.
 
 ### 4. Open the API
 
@@ -95,20 +104,9 @@ http://localhost:8080/swagger-ui.html
 | `./scripts/run-local.sh logs [pod]` | Follow the logs of a pod (all pods if omitted) |
 | `./scripts/run-local.sh pf` | Port-forward Grafana, Prometheus, Zipkin and Kafka UI |
 | `./scripts/run-local.sh secrets` | Regenerate `k8s/k8s-secrets.env` |
-| `./scripts/run-local.sh up --build` | Build the images from source and deploy your code |
 | `./scripts/run-local.sh up --timeout N` | Wait up to N seconds for the pods (default 600) |
 
-To build your own code instead of pulling the published images:
-
-```bash
-./scripts/run-local.sh up --build
-```
-
-This compiles every service and loads the images into the cluster, so expect 10+ minutes
-on the first run. See [Your own images](#your-own-images).
-
-<details>
-<summary>What the script does</summary>
+### What the script does
 
 ```bash
 cp k8s/k8s-secrets.env.example k8s/k8s-secrets.env
@@ -122,8 +120,6 @@ To stop:
 ```bash
 kind delete cluster
 ```
-
-</details>
 
 ### Accessing the other services
 
