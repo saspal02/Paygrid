@@ -352,3 +352,39 @@ kubectl -n paygrid-core port-forward svc/config-service 8888:8888   # Config ser
 Or run all four observability UIs at once with `./scripts/run-local.sh pf`.
 
 ## Load testing
+
+## Infrastructure cost at 10,000 TPS
+
+10,000 transactions/sec = ~20,000 HTTP requests/sec (`Create Order` + `Init Payment` per
+transaction).
+
+| Component | Instance type | Count | Est. $/month |
+| ----- | ----- | ----- | ----- |
+| `api-gateway`  | `c6i.xlarge` (4 vCPU / 8 GB) | 30 | ~$2,200 |
+| `payment-service`  | `m6i.xlarge` (4 vCPU / 16 GB) | 50 | ~$4,400 |
+| `merchant-service`  | `m6i.large` (2 vCPU / 8 GB) | 15 | ~$650 |
+| `vault-service`  | `m6i.large` (2 vCPU / 8 GB) | 15 | ~$650 |
+| `operations-service`  | `m6i.large` (2 vCPU / 8 GB) | 8 | ~$350 |
+| PgBouncer (connection pooling) | `m6i.large`  | 4 | ~$180 |
+| Postgres (sharded, 4 shards, writer+reader each) | `db.r6g.2xlarge`  | 8 | ~$7,000 |
+| Redis Cluster | `cache.r6g.large`, 3 shards | 3 | ~$800 |
+| Kafka (MSK) | `kafka.m5.large`, 3 brokers | 3 | ~$600 |
+| **Total (compute only)** |  | **~136 instances** | **~$16,830/month** |
+Realistic all-in cost (adding load balancers, cross-AZ transfer, storage/IO, control plane,
+observability, backups): ~$25,000-35,000/month.We can easily scale upto 10,000 transaction per second if we increase 
+our infra and the way i designed the system it can handle huge transactions as well
+
+# Jmeter test results
+
+![Statistics](diagrams/test statistics.png)
+
+![transaction test graph](diagrams/transaction test graph.png)
+
+
+
+
+
+
+
+
+
