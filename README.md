@@ -32,6 +32,12 @@ An **observability stack is fully wired in**: Prometheus scrapes every service, 
 
 ## Architecture
 
+This is the super layman flow of payments from gateway by the customer to merchant and to bank for settlement
+
+![Basic flow](diagrams/Basic flow.png)
+
+![Microservice architecture](diagrams/Microservice architecture.png)
+
 A distributed, Kubernetes-native payment platform — order creation, payment authorization, bank callback simulation, settlement, and webhooks — built across seven microservices using the architectural patterns that Stripe, Razorpay, and Adyen rely on in production.
 
 | Service | Responsibility |
@@ -90,6 +96,9 @@ Transitions are enforced by the payment state machine, so an invalid jump throws
 | `CANCELLED` | Order or payment cancelled | terminal |
 | `FAILED` | Terminal failure, typically a bank decline | terminal |
 
+![Payment object lifecycle](diagrams/Payment state.png)
+
+
 ## Webhooks
 
 ### Securing webhooks
@@ -118,6 +127,16 @@ The webhook delivery and retry pipeline begins when a payment state change event
 | **Circuit breaker + retry** | Resilience4j around the `payment-service` and `merchant-service` Feign clients | More scale means more failure surface. This is what stops one slow dependency from cascading into a full outage |
 | **Saga (orchestration + choreography)** | `saga/PaymentAuthorizationRecorder`, `PaymentServiceImpl`, `SettlementTransactionExecutor`, `WebhookKafkaConsumer` | A payment spans the payment and order databases, the bank or gateway, the settlement database, and webhooks —<br>no single database transaction can cover them; without compensating steps, a partial failure leaves money in an inconsistent state |
 | **Full observability** | Prometheus + Grafana (per-service CPU and memory), Zipkin tracing | You cannot capacity-plan — or debug — a system at scale you cannot see into |
+
+
+### Idempotency keys or idempotent transactions
+
+![idempotency](diagrams/idempotency.png)
+
+### Distributed scheduler locking
+
+![distributed scheduler locking](diagrams/shedlock.png)
+
 
 ### Transactional Outbox pattern
 
@@ -157,6 +176,20 @@ Outbox table → Kafka → Operations Service
 Because the payment update and the outbox insert share a single database transaction, a committed payment update always has its corresponding event stored in the outbox table. A separate publisher reads pending outbox events and publishes them to Kafka.
 
 This avoids a distributed transaction between PostgreSQL and Kafka while guaranteeing reliable event delivery between the two services.
+
+
+### Stateless service
+
+![Stateless service](diagrams/stateless service.png)
+
+### Rate limiting
+
+![Rate limiting](diagrams/Rate limiting.png)
+
+### Circuit breakers
+
+![Circuit breakers](diagrams/Circuit breakers.png)
+
 
 ### Saga pattern
 
@@ -317,3 +350,5 @@ kubectl -n paygrid-core port-forward svc/config-service 8888:8888   # Config ser
 ```
 
 Or run all four observability UIs at once with `./scripts/run-local.sh pf`.
+
+## Load testing
