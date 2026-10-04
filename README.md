@@ -1,4 +1,4 @@
-# PayGrid — Distributed Payment Gateway
+# PayGrid — Distributed Payment Gateway (like Razorpay)
 
 PayGrid is a Razorpay-style payment gateway built with Spring Cloud microservices. Merchants sign up, log in, create scoped API keys, and accept payments through a single gateway API with idempotency, rate limiting, and PCI-safe card tokenization built in.
 
