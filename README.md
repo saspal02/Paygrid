@@ -195,7 +195,7 @@ The webhook delivery and retry pipeline begins when a payment state change event
 | **Circuit breaker + retry** | Resilience4j around the `payment-service` and `merchant-service` Feign clients | More scale means more failure surface. This is what stops one slow dependency from cascading into a full outage |
 | **Saga (orchestration + choreography)** | `saga/PaymentAuthorizationRecorder`, `PaymentServiceImpl`, `SettlementTransactionExecutor`, `WebhookKafkaConsumer` | A payment spans the payment and order databases, the bank or gateway, the settlement database, and webhooks — no single database transaction can cover them; without compensating steps, a partial failure leaves money in an inconsistent state |
 | **Full observability** | Prometheus + Grafana (per-service CPU and memory), Zipkin tracing | You cannot capacity-plan — or debug — a system at scale you cannot see into |
-| **API rotation** | API rotation by merchant so even if exposed we can easily recover by rotating API key from time to time | — |
+| **API rotation** | API key rotation to replace an existing API key with a new key without breaking the client’s access | If the key is exposed, attacker can authenticate as the merchant |
 
 ### Idempotency keys or idempotent transactions
 
@@ -225,6 +225,9 @@ The fundamental problem: updating a payment in PostgreSQL and publishing to Kafk
 ### Stateless service
 
 ![Stateless service](diagrams/stateless%20service.png)
+
+A stateless service can use Redis to store shared state externally instead of keeping it in the service's memory.
+This allows any service instance to handle any request.
 
 ### Rate limiting
 
@@ -264,19 +267,6 @@ A payment spans multiple databases and external systems. No single ACID transact
 ![API key rotation](diagrams/Rotate%20api%20key.png)
 
 API key rotation allows merchants to securely replace compromised or expired API keys without disrupting active integrations. The entire flow is designed to prevent service interruption during the transition.
-
-**How it works:**
-
-1. **Initiation** — The merchant calls `POST /v1/merchants/api-keys/{keyId}/rotate`, authenticated with a JWT token. Only the key owner can rotate their own key.
-2. **New secret generation** — The system generates a new 40-character random secret using `RandomizerUtil.randomBase64(40)` and hashes it with BCrypt before persisting.
-3. **Grace period (24 hours)** — The old secret is preserved as `previousKeySecretHash` and a 24-hour grace period begins from the rotation timestamp (`gracePeriodExpiresAt`). During this window, **both** the old and new secrets are accepted by the API gateway.
-4. **Dual-secret validation** — The `ApiKeyAuthHandler` in the API gateway checks incoming requests against both secrets:
-   - First, it validates against the current `keySecretHash`.
-   - If that fails and the key is still within its grace period, it falls back to `previousKeySecretHash`.
-   - This ensures downstream systems still using the old secret continue to work during the migration window.
-5. **Performance optimization** — BCrypt is computationally expensive. To avoid hashing on every request, the gateway caches the result of secret verification in Redis with a 30-second TTL using a SHA-256 derived cache key (`apikey:secret-verified:{keyId}:{hash}:{sha256(rawSecret)}`).
-6. **Cache invalidation** — On rotation, the cached entry for the key is immediately evicted from Redis via `apiKeyCache.evict()` so the next authentication request loads the fresh state.
-7. **After grace period expires** — Once 24 hours elapse, `isInGracePeriod()` returns `false` and only the new secret is accepted. The old secret is permanently rejected.
 
 **Security considerations:**
 
