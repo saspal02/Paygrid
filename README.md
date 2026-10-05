@@ -123,7 +123,12 @@ The Payment Service only knows that it must process a payment; it does not know 
 
 > **PCI-DSS Compliance:** All cardholder data processing occurs within the vault service boundary. No PAN is persisted outside the encrypted vault store.
 
-### Payment object lifecycle
+## Full payment method flow
+
+![Payment method flow](diagrams/payment_methods_flow.webp)
+
+
+## Payment object lifecycle
 
 ![Payment object lifecycle](diagrams/Payment-object-lifecycle.png)
 
